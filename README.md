@@ -8,6 +8,8 @@ Standalone local dashboard for visualising QC metrics from sequencing runs.
 <img width="1455" height="764" alt="Screenshot 2026-02-08 at 10 02 34 PM" src="https://github.com/user-attachments/assets/29200992-1ac8-4904-925b-d2aa75214ac6" />
 
 
+<img width="1466" height="743" alt="Screenshot 2026-02-08 at 10 00 43 PM" src="https://github.com/user-attachments/assets/5503f4f2-e247-4c04-a6e1-da9b21a5be8b" />
+
 
 
 ## Requirements
