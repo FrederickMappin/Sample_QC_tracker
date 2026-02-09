@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QC Metrics Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="header">
+    <h1 class="header-title">🧬 QC Metrics Dashboard</h1>
+    <div class="upload-area">
+      <input type="file" id="file-input" accept=".parquet" hidden>
+      <button id="upload-btn" class="btn btn-upload">Upload Parquet</button>
+      <span id="upload-status" class="upload-status">No file loaded</span>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ─────────────────────────────────── -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-data">Data Table</button>
+    <button class="tab-btn" data-tab="tab-plots">Visualizations</button>
+  </nav>
+
+  <!-- ── Tab 1: Data Table ──────────────────────────────── -->
+  <section id="tab-data" class="tab-content active">
+
+    <!-- Filters -->
+    <div class="filter-row" id="filter-row">
+      <div class="filter-group">
+        <label for="filter-machine">Machine</label>
+        <select id="filter-machine" disabled><option>All</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-assay">Assay</label>
+        <select id="filter-assay" disabled><option>All</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-size">Desired Size</label>
+        <select id="filter-size" disabled><option>All</option></select>
+      </div>
+    </div>
+
+    <!-- Row count -->
+    <div class="row-count" id="row-count">Upload a parquet file to begin.</div>
+
+    <!-- Scrollable table -->
+    <div class="table-wrapper" id="table-wrapper">
+      <table id="data-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+      <div id="table-placeholder" class="placeholder">
+        Upload a parquet file to view data.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab 2: Visualizations ──────────────────────────── -->
+  <section id="tab-plots" class="tab-content">
+    <div id="filter-banner" class="filter-banner">No filters active</div>
+    <div id="plot-grid" class="plot-grid">
+      <!-- plot containers are injected dynamically by plots.js -->
+    </div>
+    <div id="plots-placeholder" class="placeholder">
+      Upload data and apply filters to see visualizations.
+    </div>
+  </section>
+
+  <!-- ── Loading overlay ────────────────────────────────── -->
+  <div id="loading" class="loading-overlay" style="display:none">
+    <div class="spinner"></div>
+    <p>Loading…</p>
+  </div>
+
+  <!-- ── Scripts ────────────────────────────────────────── -->
+  <script src="js/main.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/table.js"></script>
+  <script src="js/plots.js"></script>
+</body>
+</html>
