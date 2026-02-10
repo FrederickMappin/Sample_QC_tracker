@@ -82,10 +82,16 @@ fileInput.addEventListener('change', async () => {
     window.appState.totalRows     = json.total_rows;
 
     // initialise filters to "All"
+    // Map parquet column names to UI keys for Type/Package
+    const colToUI = { Assay: 'Type', Desired_Size: 'Package' };
     window.appState.currentFilters = {};
     for (const key of Object.keys(json.filter_options)) {
-      window.appState.currentFilters[key] = 'All';
+      const uiKey = colToUI[key] || key;
+      window.appState.currentFilters[uiKey] = 'All';
     }
+    // Ensure Type & Package always exist (hardcoded dropdowns)
+    if (!window.appState.currentFilters.Type)    window.appState.currentFilters.Type = 'All';
+    if (!window.appState.currentFilters.Package) window.appState.currentFilters.Package = 'All';
 
     uploadStatus.textContent = file.name;
 

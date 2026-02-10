@@ -2,19 +2,112 @@
  * filters.js – Dropdown population, change handlers, data fetching.
  */
 
-/* ── Map filter keys → DOM select IDs ──────────────────── */
-const FILTER_ID_MAP = {
-  Machine:      'filter-machine',
-  Assay:        'filter-assay',
-  Desired_Size: 'filter-size',
+/* ── Static Type → Package mapping (cascading) ─────────── */
+const PACKAGE_MAP = {
+  'Illumina Whole Exome Sequencing': [
+    '200 Mbp', '400 Mbp', '650 Mbp', '1 Gbp', '2 Gbp',
+    '5 Gbp', '10 Gbp', '25 Gbp', '50 Gbp', '30×', '60x',
+  ],
+  'Illumina Whole Genome Sequencing': [
+    '50x', '100x', '200x',
+  ],
+  'mRNA Enrichment': [
+    '25M', '50M', '100M', '200M',
+  ],
+  'rRNA Depletion': [
+    '12M', '25M', '50M', '100M', '200M',
+  ],
 };
 
+const TYPE_OPTIONS = ['All', ...Object.keys(PACKAGE_MAP)];
+
+/* ── Map parquet column names to our UI filter keys ────── */
+// The parquet may use Assay / Desired_Size; we present them as Type / Package.
+const COLUMN_TO_UI = {
+  Assay:        'Type',
+  Desired_Size: 'Package',
+};
+const UI_TO_COLUMN = {};                       // filled dynamically at load time
+
+/* ── Map filter keys → DOM select IDs ──────────────────── */
+const FILTER_ID_MAP = {
+  Machine:  'filter-machine',
+  Type:     'filter-type',
+  Package:  'filter-package',
+};
+
+/* ── Populate the static Type dropdown ─────────────────── */
+function populateTypeDropdown() {
+  const el = document.getElementById('filter-type');
+  el.innerHTML = '';
+  TYPE_OPTIONS.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    el.appendChild(opt);
+  });
+  el.disabled = false;
+  el.value = 'All';
+
+  el.onchange = () => {
+    window.appState.currentFilters.Type = el.value;
+    populatePackageDropdown(el.value);
+    applyFilters();
+  };
+}
+
+/* ── Populate Package dropdown based on selected Type ──── */
+function populatePackageDropdown(selectedType) {
+  const el = document.getElementById('filter-package');
+  let values;
+
+  if (!selectedType || selectedType === 'All') {
+    // merge all packages (deduplicated, preserving order)
+    const seen = new Set();
+    values = ['All'];
+    for (const pkgs of Object.values(PACKAGE_MAP)) {
+      for (const p of pkgs) {
+        if (!seen.has(p)) { seen.add(p); values.push(p); }
+      }
+    }
+  } else {
+    values = ['All', ...(PACKAGE_MAP[selectedType] || [])];
+  }
+
+  el.innerHTML = '';
+  values.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    el.appendChild(opt);
+  });
+  el.disabled = false;
+  el.value = 'All';
+  window.appState.currentFilters.Package = 'All';
+
+  el.onchange = () => {
+    window.appState.currentFilters.Package = el.value;
+    applyFilters();
+  };
+}
+
 /**
- * Populate all three dropdowns from the server-supplied options.
+ * Populate all filter dropdowns.
+ * Machine is dynamic (from parquet data); Type & Package are hardcoded.
  */
 function populateFilters(filterOptions) {
+  // ── Machine (dynamic from data) ──
   for (const [col, values] of Object.entries(filterOptions)) {
-    const selectId = FILTER_ID_MAP[col] || guessSelectId(col);
+    // Map old parquet column names to our UI key
+    const uiKey = COLUMN_TO_UI[col] || col;
+
+    if (uiKey === 'Type' || uiKey === 'Package') {
+      // remember the real parquet column name for query time
+      UI_TO_COLUMN[uiKey] = col;
+      continue;                     // skip dynamic population – we hardcode these
+    }
+
+    const selectId = FILTER_ID_MAP[uiKey] || guessSelectId(uiKey);
     const el = document.getElementById(selectId);
     if (!el) continue;
 
@@ -28,12 +121,19 @@ function populateFilters(filterOptions) {
     el.disabled = false;
     el.value = 'All';
 
-    // change listener – re-apply filters on every change
     el.onchange = () => {
-      window.appState.currentFilters[col] = el.value;
+      window.appState.currentFilters[uiKey] = el.value;
       applyFilters();
     };
   }
+
+  // ── Type & Package (hardcoded, cascading) ──
+  populateTypeDropdown();
+  populatePackageDropdown('All');
+
+  // Initialise filter state for Type / Package
+  window.appState.currentFilters.Type = 'All';
+  window.appState.currentFilters.Package = 'All';
 }
 
 /**
@@ -42,16 +142,30 @@ function populateFilters(filterOptions) {
 function guessSelectId(col) {
   const lower = col.toLowerCase().replace(/[^a-z]/g, '');
   if (lower.includes('machine'))  return 'filter-machine';
-  if (lower.includes('assay'))    return 'filter-assay';
-  if (lower.includes('size') || lower.includes('desired')) return 'filter-size';
+  if (lower.includes('assay') || lower.includes('type'))    return 'filter-type';
+  if (lower.includes('size') || lower.includes('desired') || lower.includes('package')) return 'filter-package';
   return 'filter-' + lower;
+}
+
+/**
+ * Build the filters dict to send to the backend.
+ * Maps our UI keys (Type, Package) back to the actual parquet column names.
+ */
+function buildBackendFilters() {
+  const raw = { ...window.appState.currentFilters };
+  const mapped = {};
+  for (const [key, val] of Object.entries(raw)) {
+    const backendCol = UI_TO_COLUMN[key] || key;
+    mapped[backendCol] = val;
+  }
+  return mapped;
 }
 
 /**
  * Read current filter state, fetch filtered data & stats.
  */
 async function applyFilters() {
-  const filters = { ...window.appState.currentFilters };
+  const filters = buildBackendFilters();
   showLoading();
 
   try {
@@ -87,7 +201,7 @@ async function applyFilters() {
  * Fetch box-plot stats and render plots.
  */
 async function updateVisualizations() {
-  const filters = { ...window.appState.currentFilters };
+  const filters = buildBackendFilters();
 
   try {
     const res  = await fetch('/stats', {
@@ -112,7 +226,7 @@ function updateFilterBanner() {
     if (val === 'All') {
       parts.push('All ' + col.replace(/_/g, ' ') + 's');
     } else {
-      parts.push(val);
+      parts.push(col.replace(/_/g, ' ') + ': ' + val);
     }
   }
   const banner = document.getElementById('filter-banner');
