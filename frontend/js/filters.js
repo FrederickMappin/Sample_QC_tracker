@@ -66,8 +66,9 @@ async function applyFilters() {
     if (json.error) { alert(json.error); return; }
 
     window.appState.currentData = json.data;
-    renderTable(json.data, window.appState.columns);
-    updateRowCount(json.count, json.total);
+    window.appState.newSamplesData = json.new_data || [];
+    renderTable(json.data, window.appState.columns, json.new_data || []);
+    updateRowCount(json.count, json.total, json.new_count || 0);
     updateFilterBanner();
 
     // if visualisation tab is visible, refresh plots immediately
@@ -121,7 +122,10 @@ function updateFilterBanner() {
 /**
  * Update the row count label.
  */
-function updateRowCount(filtered, total) {
-  document.getElementById('row-count').textContent =
-    `Showing ${filtered} of ${total} rows`;
+function updateRowCount(filtered, total, newCount) {
+  let text = `Showing ${filtered} of ${total} rows`;
+  if (newCount > 0) {
+    text += ` + ${newCount} new sample${newCount !== 1 ? 's' : ''}`;
+  }
+  document.getElementById('row-count').textContent = text;
 }

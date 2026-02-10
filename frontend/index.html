@@ -14,8 +14,13 @@
     <h1 class="header-title">🧬 QC Metrics Dashboard</h1>
     <div class="upload-area">
       <input type="file" id="file-input" accept=".parquet" hidden>
-      <button id="upload-btn" class="btn btn-upload">Upload Parquet</button>
+      <button id="upload-btn" class="btn btn-upload">Upload Database</button>
       <span id="upload-status" class="upload-status">No file loaded</span>
+      <span class="upload-divider">|</span>
+      <input type="file" id="new-samples-input" accept=".parquet" hidden>
+      <button id="new-samples-btn" class="btn btn-new-samples">Upload New Samples</button>
+      <span id="new-samples-status" class="upload-status"></span>
+      <button id="clear-new-samples-btn" class="btn btn-clear-samples" style="display:none">✕</button>
     </div>
   </header>
 

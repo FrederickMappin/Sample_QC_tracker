@@ -10,12 +10,31 @@ function renderPlots(statsData) {
   const grid = document.getElementById('plot-grid');
   grid.innerHTML = '';                                    // clear old plots
 
+  // remove old legend if present
+  const oldLegend = document.querySelector('.plot-legend');
+  if (oldLegend) oldLegend.remove();
+
   const placeholder = document.getElementById('plots-placeholder');
   if (!statsData || Object.keys(statsData).length === 0) {
     placeholder.style.display = 'block';
     return;
   }
   placeholder.style.display = 'none';
+
+  // check if any new samples exist
+  const hasNewSamples = Object.values(statsData).some(
+    s => s.new_points && s.new_points.length > 0
+  );
+
+  // ── legend ────────────────────────────────────────────
+  if (hasNewSamples) {
+    const legend = document.createElement('div');
+    legend.className = 'plot-legend';
+    legend.innerHTML =
+      '<span class="legend-dot legend-dot-db"></span> Database ' +
+      '<span class="legend-dot legend-dot-ns"></span> New Samples';
+    grid.parentNode.insertBefore(legend, grid);
+  }
 
   Object.entries(statsData).forEach(([col, stats], idx) => {
     // ── create card ──────────────────────────────────────
@@ -108,12 +127,13 @@ function renderBoxPlot(container, colName, data) {
     .attr('y1', y(data.median)).attr('y2', y(data.median))
     .attr('stroke', '#dc2626').attr('stroke-width', 2.5);
 
-  // ── jittered dots ──────────────────────────────────────
+  // ── jittered dots (database – rose) ────────────────────
   const jitterW = boxW * 0.75;
-  svg.selectAll('.dot')
+  svg.selectAll('.dot-db')
     .data(data.points)
     .enter()
     .append('circle')
+      .attr('class', 'dot-db')
       .attr('cx', () => xC + (Math.random() - 0.5) * jitterW)
       .attr('cy', d  => y(d))
       .attr('r', 3.5)
@@ -121,6 +141,48 @@ function renderBoxPlot(container, colName, data) {
       .attr('opacity', 0.45)
       .attr('stroke', '#fff')
       .attr('stroke-width', 0.5);
+
+  // ── jittered dots (new samples – blue, with tooltips) ──
+  if (data.new_points && data.new_points.length > 0) {
+    // ensure tooltip div exists
+    let tooltip = d3.select('#plot-tooltip');
+    if (tooltip.empty()) {
+      tooltip = d3.select('body').append('div')
+        .attr('id', 'plot-tooltip')
+        .attr('class', 'plot-tooltip');
+    }
+
+    svg.selectAll('.dot-ns')
+      .data(data.new_points)
+      .enter()
+      .append('circle')
+        .attr('class', 'dot-ns')
+        .attr('cx', () => xC + (Math.random() - 0.5) * jitterW)
+        .attr('cy', d  => y(d.value))
+        .attr('r', 4)
+        .attr('fill', '#2563eb')
+        .attr('opacity', 0.7)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 0.5)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+          d3.select(this).attr('r', 6).attr('opacity', 1);
+          const label = d.name ? d.name : 'New Sample';
+          const val = d.value != null ? d.value.toFixed(2) : '—';
+          tooltip
+            .style('display', 'block')
+            .html('<strong>' + label + '</strong><br>' + formatTitle(colName) + ': ' + val);
+        })
+        .on('mousemove', function(event) {
+          tooltip
+            .style('left', (event.pageX + 12) + 'px')
+            .style('top', (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('r', 4).attr('opacity', 0.7);
+          tooltip.style('display', 'none');
+        });
+  }
 
   // ── x-axis label ───────────────────────────────────────
   svg.append('text')
@@ -138,9 +200,14 @@ function yDomainFor(col, data) {
   const lo = col.toLowerCase();
   if (lo.includes('q30') || lo.includes('pass'))  return [0, 100];
   if (lo.includes('error'))                         return [0, 5];
-  // dynamic range for yield or unknown columns
-  const pad = (data.max - data.min) * 0.1 || 1;
-  return [Math.max(0, data.min - pad), data.max + pad];
+  // dynamic range: include both database and new sample points
+  const dbPts = data.points || [];
+  const nsPts = (data.new_points || []).map(p => typeof p === 'object' ? p.value : p).filter(v => v != null);
+  const allPts = dbPts.concat(nsPts);
+  const allMin = allPts.length > 0 ? Math.min(data.min, ...allPts) : data.min;
+  const allMax = allPts.length > 0 ? Math.max(data.max, ...allPts) : data.max;
+  const pad = (allMax - allMin) * 0.1 || 1;
+  return [Math.max(0, allMin - pad), allMax + pad];
 }
 
 function unitLabel(col) {

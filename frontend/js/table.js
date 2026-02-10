@@ -6,15 +6,17 @@ let _headerBuilt = false;
 
 /**
  * Render the data table.
- * @param {Array<Object>} data   – Row objects from /query
- * @param {Object}        cols   – { categorical: [...], numerical: [...] }
+ * @param {Array<Object>} data     – Row objects from /query (database)
+ * @param {Object}        cols     – { categorical: [...], numerical: [...] }
+ * @param {Array<Object>} newData  – Row objects from new samples (optional)
  */
-function renderTable(data, cols) {
+function renderTable(data, cols, newData) {
   const thead = document.getElementById('table-head');
   const tbody = document.getElementById('table-body');
   const placeholder = document.getElementById('table-placeholder');
+  newData = newData || [];
 
-  if (!data || data.length === 0) {
+  if ((!data || data.length === 0) && newData.length === 0) {
     tbody.innerHTML = '';
     if (!_headerBuilt) thead.innerHTML = '';
     placeholder.style.display = 'block';
@@ -23,7 +25,9 @@ function renderTable(data, cols) {
   }
   placeholder.style.display = 'none';
 
-  const allCols  = Object.keys(data[0]);
+  // use columns from whichever dataset has data
+  const sampleRow = data.length > 0 ? data[0] : newData[0];
+  const allCols  = Object.keys(sampleRow);
   const numSet   = new Set(cols.numerical);
 
   // ── build header once (or rebuild if columns changed) ─────
@@ -41,8 +45,31 @@ function renderTable(data, cols) {
 
   // ── build body ────────────────────────────────────────────
   tbody.innerHTML = '';
+
+  // database rows
   data.forEach(row => {
     const tr = document.createElement('tr');
+    allCols.forEach(col => {
+      const td = document.createElement('td');
+      const val = row[col];
+
+      if (val == null) {
+        td.textContent = '—';
+      } else if (numSet.has(col)) {
+        td.textContent = formatNum(col, val);
+        td.classList.add('cell-num');
+      } else {
+        td.textContent = val;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // new samples rows (blue-tinted)
+  newData.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.classList.add('new-sample-row');
     allCols.forEach(col => {
       const td = document.createElement('td');
       const val = row[col];

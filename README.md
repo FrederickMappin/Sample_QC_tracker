@@ -2,16 +2,6 @@
 
 Standalone local dashboard for visualising QC metrics from sequencing runs.
 
-<img width="1466" height="743" alt="Screenshot 2026-02-08 at 10 00 43 PM" src="https://github.com/user-attachments/assets/dc5d0d57-6d27-485e-898f-9061fdad7b4f" />
-
-
-<img width="1455" height="764" alt="Screenshot 2026-02-08 at 10 02 34 PM" src="https://github.com/user-attachments/assets/29200992-1ac8-4904-925b-d2aa75214ac6" />
-
-<img width="1458" height="611" alt="Screenshot 2026-02-08 at 10 03 43 PM" src="https://github.com/user-attachments/assets/616b31d4-63b3-4725-b689-4a64d9141198" />
-
-
-
-
 ## Requirements
 
 - Python 3.9+

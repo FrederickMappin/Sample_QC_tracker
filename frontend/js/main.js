@@ -9,6 +9,8 @@ window.appState = {
   filterOptions: {},        // { Machine: ["All","NovaSeq",…], … }
   currentFilters: {},       // { Machine: "All", Assay: "All", … }
   currentData: [],
+  newSamplesData: [],
+  newSamplesFile: null,
   totalRows: 0,
 };
 
@@ -19,6 +21,10 @@ const uploadBtn      = document.getElementById('upload-btn');
 const fileInput      = document.getElementById('file-input');
 const uploadStatus   = document.getElementById('upload-status');
 const loadingOverlay = document.getElementById('loading');
+const newSamplesBtn  = document.getElementById('new-samples-btn');
+const newSamplesInput = document.getElementById('new-samples-input');
+const newSamplesStatus = document.getElementById('new-samples-status');
+const clearNewSamplesBtn = document.getElementById('clear-new-samples-btn');
 
 /* ── Loading helpers ───────────────────────────────────── */
 function showLoading() { loadingOverlay.style.display = 'flex'; }
@@ -96,5 +102,63 @@ fileInput.addEventListener('change', async () => {
   } finally {
     hideLoading();
     fileInput.value = '';           // allow re-uploading same file
+  }
+});
+
+/* ── New samples upload ────────────────────────────────── */
+newSamplesBtn.addEventListener('click', () => newSamplesInput.click());
+
+newSamplesInput.addEventListener('change', async () => {
+  const file = newSamplesInput.files[0];
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith('.parquet')) {
+    alert('Please select a .parquet file.');
+    return;
+  }
+
+  showLoading();
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const res  = await fetch('/upload-new-samples', { method: 'POST', body: form });
+    const json = await res.json();
+
+    if (!res.ok || json.error) {
+      alert('Upload failed: ' + (json.error || 'Unknown error'));
+      hideLoading();
+      return;
+    }
+
+    window.appState.newSamplesFile = file.name;
+    newSamplesStatus.textContent = file.name;
+    clearNewSamplesBtn.style.display = 'inline-block';
+
+    // refresh table + charts
+    await applyFilters();
+  } catch (err) {
+    alert('Upload error: ' + err.message);
+  } finally {
+    hideLoading();
+    newSamplesInput.value = '';
+  }
+});
+
+/* ── Clear new samples ─────────────────────────────────── */
+clearNewSamplesBtn.addEventListener('click', async () => {
+  showLoading();
+  try {
+    await fetch('/clear-new-samples', { method: 'POST' });
+    window.appState.newSamplesFile = null;
+    window.appState.newSamplesData = [];
+    newSamplesStatus.textContent = '';
+    clearNewSamplesBtn.style.display = 'none';
+    await applyFilters();
+  } catch (err) {
+    console.error('Clear error:', err);
+  } finally {
+    hideLoading();
   }
 });

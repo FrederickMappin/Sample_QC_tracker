@@ -41,7 +41,7 @@ def serve_js(filename):
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    """Receive parquet file, load into DuckDB, return column info."""
+    """Receive parquet file (database), load into DuckDB, return column info."""
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
@@ -59,6 +59,39 @@ def upload():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/upload-new-samples", methods=["POST"])
+def upload_new_samples():
+    """Receive a parquet file for new samples, load into separate DuckDB table."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    f = request.files["file"]
+    if not f.filename or not f.filename.lower().endswith(".parquet"):
+        return jsonify({"error": "File must be a .parquet file"}), 400
+
+    filepath = os.path.join(UPLOAD_DIR, "new_samples.parquet")
+    f.save(filepath)
+
+    try:
+        info = db.load_new_samples(filepath)
+        return jsonify({"success": True, **info})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/clear-new-samples", methods=["POST"])
+def clear_new_samples():
+    """Remove new samples data."""
+    try:
+        db.clear_new_samples()
+        filepath = os.path.join(UPLOAD_DIR, "new_samples.parquet")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/filters", methods=["GET"])
 def filters():
     """Return current filter options."""
@@ -69,16 +102,24 @@ def filters():
 
 @app.route("/query", methods=["POST"])
 def query():
-    """Return filtered rows."""
-    if not db.loaded:
+    """Return filtered rows (database + new samples)."""
+    if not db.loaded and not db.new_samples_loaded:
         return jsonify({"error": "No data loaded. Upload a parquet file first."}), 400
 
     body = request.get_json(silent=True) or {}
     filters = body.get("filters", {})
 
     try:
-        data = db.query_data(filters)
-        return jsonify({"data": data, "count": len(data), "total": db.total_rows})
+        result = db.query_data(filters)
+        data = result["data"]
+        new_data = result["new_data"]
+        return jsonify({
+            "data": data,
+            "new_data": new_data,
+            "count": len(data),
+            "new_count": len(new_data),
+            "total": db.total_rows,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -86,7 +127,7 @@ def query():
 @app.route("/stats", methods=["POST"])
 def stats():
     """Return box-plot statistics for filtered data."""
-    if not db.loaded:
+    if not db.loaded and not db.new_samples_loaded:
         return jsonify({"error": "No data loaded. Upload a parquet file first."}), 400
 
     body = request.get_json(silent=True) or {}
