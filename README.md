@@ -60,8 +60,6 @@ python app.py
 
 The dashboard opens automatically at **http://127.0.0.1:5000**. If it doesn't, open that URL manually in your browser.
 
-> **Note:** The root `app.py` is a legacy Streamlit explorer and is **not** required for the main dashboard. The primary entry point is `backend/app.py`.
-
 ---
 
 ## Project Structure
@@ -82,7 +80,6 @@ Sample_QC_tracker/
 │       ├── filters.js      # Dropdown population, cascading logic, query dispatch
 │       ├── table.js        # Data table rendering
 │       └── plots.js        # D3.js box-plot visualisations
-├── app.py                  # (Legacy) Streamlit data explorer
 ├── IMPLEMENTATION_PROMPTS.md
 └── README.md
 ```
@@ -122,8 +119,8 @@ The dashboard auto-detects columns by data type. Text/varchar columns become fil
 | Column | Type | Description | Example Values |
 |---|---|---|---|
 | `Sample_Name` | text | Unique sample identifier | S001, S002 |
-| `Machine` | text | Sequencing instrument | NovaSeq, MiSeq, NextSeq |
-| `Assay` | text | Assay / sequencing type | WGS, WES, mRNA, rRNA |
+| `Machine` | text | Sequencing instrument | NovaSeq, MiSeq, NextSeq, Revio |
+| `Assay` | text | Assay / sequencing type | WGS, WES, mRNA, rRNA, Pacbio WGS, Pacbio AAV, Pacbio IsoSeq |
 | `Desired_Size` | text | Target size or coverage | 200 Mbp, 50x, 100M |
 | `Q30` | numeric | Percentage of bases ≥ Q30 | 0–100 |
 | `Total_Yield` | numeric | Total yield (Gb) | 0–500 |
@@ -144,6 +141,9 @@ The dashboard auto-detects columns by data type. Text/varchar columns become fil
 | Illumina Whole Genome Sequencing |
 | mRNA Enrichment |
 | rRNA Depletion |
+| Pacbio WGS |
+| Pacbio AAV |
+| Pacbio IsoSeq |
 
 ### Package (cascades from Type)
 
@@ -153,6 +153,9 @@ The dashboard auto-detects columns by data type. Text/varchar columns become fil
 | **Illumina Whole Genome Sequencing** | 50x, 100x, 200x |
 | **mRNA Enrichment** | 25M, 50M, 100M, 200M |
 | **rRNA Depletion** | 12M, 25M, 50M, 100M, 200M |
+| **Pacbio WGS** | 25M |
+| **Pacbio AAV** | 25M |
+| **Pacbio IsoSeq** | 25M |
 
 When **Type** is set to "All", the Package dropdown shows the combined (deduplicated) set of all values.
 

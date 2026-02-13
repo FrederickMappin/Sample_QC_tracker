@@ -17,6 +17,15 @@ const PACKAGE_MAP = {
   'rRNA Depletion': [
     '12M', '25M', '50M', '100M', '200M',
   ],
+  'Pacbio WGS': [
+    '25M',
+  ],
+  'Pacbio AAV': [
+    '25M',
+  ],
+  'Pacbio IsoSeq': [
+    '25M',
+  ],
 };
 
 const TYPE_OPTIONS = ['All', ...Object.keys(PACKAGE_MAP)];

@@ -6,6 +6,9 @@ Handles parquet loading, filtering, and box-plot statistics.
 import duckdb
 import math
 
+# Default machines that always appear in the Machine dropdown
+DEFAULT_MACHINES = ['NovaSeq', 'MiSeq', 'NextSeq', 'Revio']
+
 
 class QCDatabase:
     def __init__(self):
@@ -48,7 +51,17 @@ class QCDatabase:
             vals = self.conn.execute(
                 f'SELECT DISTINCT "{col}" FROM qc_data ORDER BY "{col}"'
             ).fetchall()
-            self.filter_options[col] = ["All"] + [str(v[0]) for v in vals if v[0] is not None]
+            data_values = [str(v[0]) for v in vals if v[0] is not None]
+            
+            # If this is the Machine column, merge defaults with data values
+            if col.lower() == 'machine':
+                combined = list(DEFAULT_MACHINES)  # Start with defaults
+                for val in data_values:
+                    if val not in combined:
+                        combined.append(val)
+                self.filter_options[col] = ["All"] + combined
+            else:
+                self.filter_options[col] = ["All"] + data_values
 
         self.total_rows = self.conn.execute("SELECT COUNT(*) FROM qc_data").fetchone()[0]
         self.loaded = True
